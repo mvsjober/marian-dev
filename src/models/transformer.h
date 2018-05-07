@@ -562,7 +562,6 @@ public:
 
     query = PreProcess(graph, prefix_ + "_emb", opsEmb, query, dropProb);
 
-    rnn::States decoderStates;
     int dimTrgWords = query->shape()[-2];
     int dimBatch = query->shape()[-3];
     auto selfMask = TriangleMask(graph, dimTrgWords);
@@ -601,12 +600,14 @@ public:
     }
 
     // apply layers
+    rnn::States decoderStates;
     for(int i = 1; i <= opt<int>("dec-depth"); ++i) {
-      auto values = query;
-      if(prevDecoderStates.size() > 0)
-        values
-            = concatenate({prevDecoderStates[i - 1].output, query}, axis = -2);
 
+      auto values = query;
+      if(prevDecoderStates.size() > 0) {
+        values = concatenate({prevDecoderStates[i - 1].output, query},
+                             axis = -2);
+      }
       decoderStates.push_back({values, nullptr});
 
       // TODO: do not recompute matrix multiplies

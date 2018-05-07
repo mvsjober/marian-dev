@@ -204,6 +204,22 @@ Ptr<ModelBase> by_type(std::string type, usage use, Ptr<Options> options) {
     return mtransFactory.construct();
   }
 
+  if(type == "shared-multi-transformer") {
+    size_t numEncoders = 2;
+    auto mtransFactory = models::encoder_decoder()(options)
+        ("usage", use)
+        ("type", "transformer")
+        ("original-type", type);
+
+    for(size_t i = 0; i < numEncoders; ++i) {
+      auto prefix = "encoder";
+      mtransFactory.push_back(models::encoder()("prefix", prefix)("index", i));
+    }
+    mtransFactory.push_back(models::decoder()("index", numEncoders));
+
+    return mtransFactory.construct();
+  }
+
   if(type == "lm-transformer") {
     auto idx = options->has("index") ? options->get<size_t>("index") : 0;
     std::vector<int> dimVocabs = options->get<std::vector<int>>("dim-vocabs");

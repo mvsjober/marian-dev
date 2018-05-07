@@ -38,6 +38,8 @@ protected:
   rnn::States states_;
   Ptr<data::CorpusBatch> batch_;
 
+  size_t position_{0};
+
 public:
   DecoderState(const rnn::States& states,
                Expr probs,
@@ -83,6 +85,9 @@ public:
   Ptr<data::CorpusBatch> getBatch() {
     return batch_;
   }
+
+  size_t getPosition() { return position_ }
+  void setPosition(size_t position) { position_ = position; }
 
   virtual void blacklist(Expr totalCosts, Ptr<data::CorpusBatch> batch) {}
 };
