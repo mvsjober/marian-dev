@@ -84,8 +84,6 @@ static inline void Quantize(marian::Tensor out,
     const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
     const float *end = input + size;
 
-    // Fill an SSE float with 4 copies of the quant mult
-    __m128 sse_quant_mult = _mm_set_ps(quant_mult, quant_mult, quant_mult, quant_mult);
     for (; input != end; input += 16, output += 1) {
       // Load 16 floats
       __m512 val = _mm512_load_ps(input);
