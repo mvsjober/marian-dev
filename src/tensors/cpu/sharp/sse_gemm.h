@@ -72,44 +72,31 @@ const int BITS = 10;
 
 static inline void Quantize(marian::Tensor out,
                             const marian::Tensor in) {
-
-    int num_rows = in->shape().elements() / in->shape()[-1];
-    int width = in->shape()[-1];
-    ABORT_IF(width % 8 != 0, "Width {} is not divisble by 8", width);
-
+    int size = in->shape().elements();
     const float* input = in->data();
-    __m128i* output = out->data<__m128i>();
+    __m256i* output = out->data<__m256i>();
+    ABORT_IF(size % 16 != 0, "Size {} is not divisble by 8", size);
+    ABORT_IF(reinterpret_cast<uintptr_t>(input) % 64 == 0, "Input not 64-byte aligned"); 
+    ABORT_IF(reinterpret_cast<uintptr_t>(output) % 32 == 0, "Input not 32-byte aligned"); 
 
     float quant_mult = pow(2.0, (float)BITS);
-
-    int num_input_chunks = width / 8;
+    // Fill with the quantization multiplier.
+    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const float *end = input + size;
 
     // Fill an SSE float with 4 copies of the quant mult
     __m128 sse_quant_mult = _mm_set_ps(quant_mult, quant_mult, quant_mult, quant_mult);
-
-    for (int i = 0; i < num_rows; i++) {
-        const float* input_row = input + i * width;
-        __m128i* output_row = output + i * num_input_chunks;
-        for (int j = 0; j < num_input_chunks; j++) {
-            const float* x = input_row + j * 8;
-            // Process 8 floats at once, since each __m128i can contain 8 16-bit integers.
-
-            // Load floats into SSE registers.
-            __m128 f_0 = _mm_loadu_ps(x);
-            __m128 f_1 = _mm_loadu_ps(x + 4);
-
-            // Multiply by quantization factor (e.g., if quant_mult = 1000.0, 0.34291 --> 342.21)
-            __m128 m_0 = _mm_mul_ps(f_0, sse_quant_mult);
-            __m128 m_1 = _mm_mul_ps(f_1, sse_quant_mult);
-
-            // Cast float to 32-bit int (e.g., 342.21 --> 342)
-            __m128i i_0 = _mm_cvtps_epi32(m_0);
-            __m128i i_1 = _mm_cvtps_epi32(m_1);
-
-            // Cast 32-bit int to 16-bit int. You must ensure that these fit into the 16-bit range
-            // by clipping values during training.
-            *(output_row + j) = _mm_packs_epi32(i_0, i_1);
-        }
+    for (; input != end; input += 16, output += 1) {
+      // Load 16 floats
+      __m512 val = _mm512_load_ps(input);
+      // Multiply each by the quantization factor.
+      val = _mm512_mul_ps(val, quant_mult_reg);
+      // Cast to 32-bit int
+      __m512i as_int =  _mm512_cvtps_epi32(val);
+      // Pack into 16-bit ints with saturation.
+      // I would do two AVX512 registers and _mm512_packs_epi32 but that's not
+      // AVX515F.
+      *output = _mm256_packs_epi32(_mm512_castsi512_si256(as_int), _mm512_extracti64x4_epi64(as_int, 1));
     }
 }
 
