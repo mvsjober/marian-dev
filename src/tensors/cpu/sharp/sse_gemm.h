@@ -76,8 +76,8 @@ static inline void Quantize(marian::Tensor out,
     const float* input = in->data();
     __m256i* output = out->data<__m256i>();
     ABORT_IF(size % 16 != 0, "Size {} is not divisble by 8", size);
-    ABORT_IF(reinterpret_cast<uintptr_t>(input) % 64 == 0, "Input not 64-byte aligned"); 
-    ABORT_IF(reinterpret_cast<uintptr_t>(output) % 32 == 0, "Input not 32-byte aligned"); 
+    ABORT_IF(reinterpret_cast<uintptr_t>(input) % 64 != 0, "Input not 64-byte aligned"); 
+    ABORT_IF(reinterpret_cast<uintptr_t>(output) % 32 != 0, "Input not 32-byte aligned"); 
 
     float quant_mult = pow(2.0, (float)BITS);
     // Fill with the quantization multiplier.
