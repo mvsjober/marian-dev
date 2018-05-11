@@ -68,20 +68,21 @@ namespace marian {
 namespace cpu {
 namespace int16 {
 
-const int BITS = 10;
+const float kQuantMult = atof(getenv("QUANTMULT"));
 
 static inline void Quantize(marian::Tensor out,
                             const marian::Tensor in) {
     int size = in->shape().elements();
     const float* input = in->data();
     __m256i* output = out->data<__m256i>();
-    ABORT_IF(size % 16 != 0, "Size {} is not divisble by 8", size);
+    __m256i cap_high = _mm256_set1_epi16(127);
+    __m256i cap_low = _mm256_set1_epi16(-128);
+    ABORT_IF(size % 16 != 0, "Size {} is not divisble by 16", size);
     ABORT_IF(reinterpret_cast<uintptr_t>(input) % 64 != 0, "Input {} is not 64-byte aligned", reinterpret_cast<uintptr_t>(input));
     ABORT_IF(reinterpret_cast<uintptr_t>(output) % 32 != 0, "Output {} is not 32-byte aligned", reinterpret_cast<uintptr_t>(output)); 
 
-    float quant_mult = pow(2.0, (float)BITS);
     // Fill with the quantization multiplier.
-    const __m512 quant_mult_reg = _mm512_set1_ps(quant_mult);
+    const __m512 quant_mult_reg = _mm512_set1_ps(kQuantMult);
     const float *end = input + size;
 
     for (; input != end; input += 16, output += 1) {
@@ -94,7 +95,8 @@ static inline void Quantize(marian::Tensor out,
       // Pack into 16-bit ints with saturation.
       // I would do two AVX512 registers and _mm512_packs_epi32 but that's not
       // AVX515F.
-      *output = _mm256_packs_epi32(_mm512_castsi512_si256(as_int), _mm512_extracti64x4_epi64(as_int, 1));
+      __m256i full16 = _mm256_packs_epi32(_mm512_castsi512_si256(as_int), _mm512_extracti64x4_epi64(as_int, 1));
+      *output = _mm256_max_epi16(_mm256_min_epi16(full16, cap_high), cap_low);
     }
 }
 
@@ -260,12 +262,9 @@ static void ProdInt(marian::Tensor C,
 
     ABORT_IF(scale != 1, "Scale other than 1 not supported");
 
-    // @TODO: make this a parameter
-    float quant_mult = pow(2.0, (float)BITS);
-
     // If we quantize to n bits and then multiple the values together, the result will be quantized to n^2 bits.
     // So we must divide by 1.0/(n^2) to get back the original value.
-    float unquant_mult = 1.0 / (quant_mult * quant_mult);
+    const float unquant_mult = 1.0 / (kQuantMult * kQuantMult);
 
     float* fC = C->data();
 
