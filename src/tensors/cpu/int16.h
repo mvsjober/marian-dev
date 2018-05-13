@@ -11,11 +11,11 @@ struct QuantizeNodeOp : public UnaryNodeOp {
   float clipValue_;
 
   QuantizeNodeOp(Expr a, float clipValue)
-  : UnaryNodeOp(a, Type::int16), clipValue_{clipValue} {}
+  : UnaryNodeOp(a, Type::int8), clipValue_{clipValue} {}
 
   NodeOps forwardOps() {
     return {
-      NodeOp(Quantize16(val_, child(0)->val(), clipValue_))
+      NodeOp(Quantize8(val_, child(0)->val(), clipValue_))
     };
   }
 
@@ -53,10 +53,11 @@ public:
 
   NodeOps forwardOps() {
     return {
-      NodeOp(ProdInt16(val_,
+      NodeOp(ProdInt8(val_,
                      child(0)->val(),
                      child(1)->val(),
-                     scalar_))
+                     scalar_,
+                     std::static_pointer_cast<QuantizeNodeOp>(child(0))->clipValue_))
     };
   }
 
@@ -96,10 +97,12 @@ public:
 
   NodeOps forwardOps() {
     return {
-      NodeOp(ProdInt16(val_,
+      NodeOp(ProdInt8(val_,
                      child(0)->val(),
                      child(1)->val(),
-                     scalar_);
+                     scalar_,
+                     // TODO maybe they have different clipping?
+                     std::static_pointer_cast<QuantizeNodeOp>(child(0))->clipValue_);
              AddBias(val_, child(2)->val()))
     };
   }
