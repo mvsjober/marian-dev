@@ -57,8 +57,11 @@ public:
   virtual Ptr<DecoderState> select(const std::vector<size_t>& selIdx,
                                    int beamSize) {
     auto selectedState = New<DecoderState>(
-        states_.select(selIdx, beamSize), probs_, encStates_, batch_);
+        states_.select(selIdx, beamSize),
+        probs_, encStates_, batch_);
+
     selectedState->setPosition(getPosition());
+
     return selectedState;
   }
 

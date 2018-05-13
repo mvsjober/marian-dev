@@ -34,13 +34,19 @@ public:
                std::vector<Ptr<ScorerState>>& states,
                size_t beamSize,
                bool first) {
+
+    // New batch-sized set of beams, on per sentence in batch
     Beams newBeams(beams.size());
+    bool nbest = options_->get<bool>("n-best");
+
     for(int i = 0; i < keys.size(); ++i) {
 
-      // keys is contains indices to vocab items in the entire beam.
+      // keys contains indices to vocab items in the entire beam.
       // values can be between 0 and beamSize * vocabSize.
       int embIdx = keys[i] % vocabSize;
       int beamIdx = i / beamSize;
+
+      std::cerr << "beam: " << keys[i] << "|"  << embIdx << " " << beamIdx << " " << beamSize << std::endl;
 
       // retrieve short list for final softmax (based on words aligned
       // to source sentences). If short list has been set, map the indices
@@ -49,6 +55,7 @@ public:
       if(shortlist)
         embIdx = shortlist->reverseMap(embIdx);
 
+      //
       if(newBeams[beamIdx].size() < beams[beamIdx].size()) {
         auto& beam = beams[beamIdx];
         auto& newBeam = newBeams[beamIdx];
@@ -69,7 +76,7 @@ public:
           beamHypIdx = 0;
 
         auto hyp = New<Hypothesis>(beam[beamHypIdx], embIdx, hypIdxTrans, cost);
-        if(options_->get<bool>("n-best")) {
+        if(nbest) {
           std::vector<float> breakDown(states.size(), 0);
           beam[beamHypIdx]->GetCostBreakdown().resize(states.size(), 0);
           for(int j = 0; j < states.size(); ++j) {
@@ -102,9 +109,16 @@ public:
   Histories search(Ptr<ExpressionGraph> graph, Ptr<data::CorpusBatch> batch) {
     int dimBatch = batch->size();
     Histories histories;
+
+    float normalize = options_->get<float>("normalize");
+    float wordPenalty = options_->get<float>("word-penalty");
+    bool supressUnknown = options_->has("allow-unk")
+      && !options_->get<bool>("allow-unk");
+    float maxLengthFactor = options_->get<float>("max-length-factor");
+
     for(int i = 0; i < dimBatch; ++i) {
       size_t sentId = batch->getSentenceIds()[i];
-      auto history = New<History>(sentId, options_->get<float>("normalize"), options_->get<float>("word-penalty"));
+      auto history = New<History>(sentId, normalize, wordPenalty);
       histories.push_back(history);
     }
 
@@ -139,7 +153,9 @@ public:
       states.push_back(scorer->startState(graph, batch));
     }
 
+    // main loop
     do {
+
       //**********************************************************************
       // create constant containing previous costs for current beam
       std::vector<size_t> hypIndices;
@@ -150,8 +166,6 @@ public:
         prevCosts = graph->constant({1, 1, 1, 1}, inits::from_value(0));
       } else {
         std::vector<float> beamCosts;
-
-        int dimBatch = batch->size();
 
         for(int i = 0; i < localBeamSize; ++i) {
           for(int j = 0; j < beams.size(); ++j) {
@@ -169,7 +183,7 @@ public:
           }
         }
 
-        prevCosts = graph->constant({(int)localBeamSize, 1, dimBatch, 1},
+        prevCosts = graph->constant({(int)localBeamSize, 1, (int)beams.size(), 1},
                                     inits::from_vector(beamCosts));
       }
 
@@ -179,7 +193,7 @@ public:
 
       for(int i = 0; i < scorers_.size(); ++i) {
         states[i] = scorers_[i]->step(
-            graph, states[i], hypIndices, embIndices, dimBatch, localBeamSize);
+            graph, states[i], hypIndices, embIndices, beams.size(), localBeamSize);
 
         if(scorers_[i]->getWeight() != 1.f)
           totalCosts
@@ -189,7 +203,7 @@ public:
       }
 
       // make beams continuous
-      if(dimBatch > 1 && localBeamSize > 1)
+      if(beams.size() > 1 && localBeamSize > 1)
         totalCosts = transpose(totalCosts, {2, 1, 0, 3});
 
       if(first)
@@ -199,17 +213,18 @@ public:
 
       //**********************************************************************
       // suppress specific symbols if not at right positions
-      if(options_->has("allow-unk") && !options_->get<bool>("allow-unk"))
+      if(supressUnknown)
         suppressUnk(totalCosts);
-      for(auto state : states)
-        state->blacklist(totalCosts, batch);
+
+      //for(auto state : states)
+      //  state->blacklist(totalCosts, batch);
 
       //**********************************************************************
       // perform beam search and pruning
       std::vector<unsigned> outKeys;
       std::vector<float> outCosts;
 
-      std::vector<size_t> beamSizes(dimBatch, localBeamSize);
+      std::vector<size_t> beamSizes(beams.size(), localBeamSize);
       nth->getNBestList(beamSizes, totalCosts->val(), outCosts, outKeys, first);
 
       int dimTrgVoc = totalCosts->shape()[-1];
@@ -217,14 +232,21 @@ public:
           outKeys, outCosts, dimTrgVoc, beams, states, localBeamSize, first);
 
       auto prunedBeams = pruneBeam(beams);
+
       for(int i = 0; i < dimBatch; ++i) {
         if(!beams[i].empty()) {
           final = final
-                  || histories[i]->size() >= options_->get<float>("max-length-factor") * batch->front()->batchWidth();
+                  || histories[i]->size() >= maxLengthFactor * batch->front()->batchWidth();
           histories[i]->Add(beams[i], prunedBeams[i].empty() || final);
         }
       }
       beams = prunedBeams;
+
+      std::cerr << beams.size();
+      std::cerr << "\t";
+      for(auto b : beams)
+        std::cerr << b.size() << " ";
+      std::cerr << std::endl;
 
       if(!first) {
         size_t maxBeam = 0;

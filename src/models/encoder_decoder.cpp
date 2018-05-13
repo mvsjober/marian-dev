@@ -150,7 +150,7 @@ Ptr<DecoderState> EncoderDecoder::step(Ptr<ExpressionGraph> graph,
 
   state = hypIndices.empty() ? state : state->select(hypIndices, beamSize);
 
-  // Fill stte with embeddings based on last prediction
+  // Fill state with embeddings based on last prediction
   decoders_[0]->embeddingsFromPrediction(graph, state, embIndices, dimBatch, beamSize);
   auto nextState = decoders_[0]->step(graph, state);
 
