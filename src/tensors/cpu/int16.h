@@ -56,8 +56,7 @@ public:
       NodeOp(ProdInt8(val_,
                      child(0)->val(),
                      child(1)->val(),
-                     scalar_,
-                     std::static_pointer_cast<QuantizeNodeOp>(child(0))->clipValue_))
+                     scalar_))
     };
   }
 
