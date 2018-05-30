@@ -376,19 +376,22 @@ public:
 };
   
 class EncoderVisual : public EncoderBase {
+  int vdim_ {0};
 public:
   EncoderVisual(Ptr<Options> options) : EncoderBase(options) {
     if (picsom_data == nullptr) {
-      cout << "Loading PicSOM data..." << endl;
-      string fname("/m/cs/project/imagedb/picsom/databases/wmt18/features/"
-                   "c_in14_gr_pool5_d_aA3.bin");
+      const string fname = options_->get<std::string>("visual-feature");
+      cout << "Loading PicSOM data from [" << fname << "]" << endl;
       picsom_data = new picsom::bin_data(fname);
       cout << picsom_data->str() << endl;
     }
+    vdim_ = (int)picsom_data->vdim();
   }
 
   virtual Ptr<EncoderState> build(Ptr<ExpressionGraph> graph,
                                   Ptr<data::CorpusBatch> batch) {
+    assert(vdim_ > 0);
+    size_t offset = batch->visualFeatureOffset();
     auto subBatch = (*batch)[batchIndex_];
     int dimBatch = subBatch->batchSize();
     int dimWords = subBatch->batchWidth();
@@ -399,14 +402,13 @@ public:
       vs.insert(vs.end(), v.begin(), v.end());
     }
 
-    auto zeros = graph->constant({dimWords, dimBatch, 2048},
+    auto zeros = graph->constant({dimWords, dimBatch, vdim_},
                                  inits::from_vector(vs));
     auto mask = graph->constant({dimWords, dimBatch, 1}, inits::ones);
 
     return New<EncoderState>(zeros, mask, batch);
   }
 
-  void clear() {
-  }
+  void clear() {}
 };
 }
