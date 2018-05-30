@@ -6,6 +6,10 @@
 #include "rnn/attention_constructors.h"
 #include "rnn/constructors.h"
 
+#include "models/bin_data.h"
+
+extern picsom::bin_data* picsom_data;
+
 namespace marian {
 
 class EncoderS2S : public EncoderBase {
@@ -369,5 +373,40 @@ public:
   }
 
   void clear() { rnn_ = nullptr; }
+};
+  
+class EncoderVisual : public EncoderBase {
+public:
+  EncoderVisual(Ptr<Options> options) : EncoderBase(options) {
+    if (picsom_data == nullptr) {
+      cout << "Loading PicSOM data..." << endl;
+      string fname("/m/cs/project/imagedb/picsom/databases/wmt18/features/"
+                   "c_in14_gr_pool5_d_aA3.bin");
+      picsom_data = new picsom::bin_data(fname);
+      cout << picsom_data->str() << endl;
+    }
+  }
+
+  virtual Ptr<EncoderState> build(Ptr<ExpressionGraph> graph,
+                                  Ptr<data::CorpusBatch> batch) {
+    auto subBatch = (*batch)[batchIndex_];
+    int dimBatch = subBatch->batchSize();
+    int dimWords = subBatch->batchWidth();
+
+    vector<float> vs;
+    for (auto idx : batch->getSentenceIds()) {
+      auto v = picsom_data->get_float(idx);
+      vs.insert(vs.end(), v.begin(), v.end());
+    }
+
+    auto zeros = graph->constant({dimWords, dimBatch, 2048},
+                                 inits::from_vector(vs));
+    auto mask = graph->constant({dimWords, dimBatch, 1}, inits::ones);
+
+    return New<EncoderState>(zeros, mask, batch);
+  }
+
+  void clear() {
+  }
 };
 }
