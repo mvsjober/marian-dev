@@ -21,7 +21,11 @@ public:
   virtual void setGuidedAlignment(const std::vector<float>&) = 0;
   virtual void setDataWeights(const std::vector<float>&) = 0;
 
+  size_t visualFeatureOffset() const { return visualFeatureOffset_; }
+  void setVisualFeatureOffset(size_t o) { visualFeatureOffset_ = o; }
+
 protected:
+  size_t visualFeatureOffset_ {0};
   std::vector<size_t> sentenceIds_;
 };
 }
