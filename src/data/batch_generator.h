@@ -35,6 +35,8 @@ private:
 
   int batchSize_{1};
 
+  size_t visualFeatureOffset_{0};
+
   typename DataSet::iterator current_;
 
   size_t maxiBatchSize_;
@@ -164,7 +166,10 @@ public:
   BatchGenerator(Ptr<DataSet> data,
                  Ptr<Config> options,
                  Ptr<BatchStats> stats = nullptr)
-      : data_(data), options_(options), stats_(stats) {}
+    : data_(data), options_(options), stats_(stats)
+  {
+    visualFeatureOffset_ = data->visualFeatureOffset();
+  }
 
   operator bool() const {
     // wait if empty but loading
@@ -205,6 +210,7 @@ public:
     std::unique_lock<std::mutex> lock(loadMutex_);
     bufferedBatches_.pop_front();
 
+    currentBatch_->setVisualFeatureOffset(visualFeatureOffset_);
     return currentBatch_;
   }
 
