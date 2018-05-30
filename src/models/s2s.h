@@ -390,13 +390,16 @@ public:
                                   Ptr<data::CorpusBatch> batch) {
     assert(vdim_ > 0);
     size_t offset = batch->visualFeatureOffset();
+    if (offset > 0)
+      cout << "OFFSET " << offset << endl;
+    
     auto subBatch = (*batch)[batchIndex_];
     int dimBatch = subBatch->batchSize();
     int dimWords = subBatch->batchWidth();
 
     vector<float> vs;
     for (auto idx : batch->getSentenceIds()) {
-      auto v = picsom_data->get_float(idx);
+      auto v = picsom_data->get_float(idx + offset);
       vs.insert(vs.end(), v.begin(), v.end());
     }
 

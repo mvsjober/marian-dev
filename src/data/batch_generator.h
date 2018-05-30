@@ -29,6 +29,8 @@ private:
 
   int batchSize_{1};
 
+  size_t visualFeatureOffset_{0};
+
   typename DataSet::iterator current_;
 
   size_t maxiBatchSize_;
@@ -133,7 +135,10 @@ public:
   BatchGenerator(Ptr<DataSet> data,
                  Ptr<Config> options,
                  Ptr<BatchStats> stats = nullptr)
-      : data_(data), options_(options), stats_(stats), g_(Config::seed) {}
+      : data_(data), options_(options), stats_(stats), g_(Config::seed)
+  {
+    visualFeatureOffset_ = data->visualFeatureOffset();
+  }
 
   operator bool() const { return !bufferedBatches_.empty(); }
 
@@ -145,6 +150,7 @@ public:
     if(bufferedBatches_.empty())
       fillBatches();
 
+    currentBatch_->setVisualFeatureOffset(visualFeatureOffset_);
     return currentBatch_;
   }
 
