@@ -13,6 +13,7 @@ template <class Sample, class Iterator, class Batch>
 class DatasetBase {
 protected:
   std::vector<std::string> paths_;
+  size_t visualFeatureOffset_ {0};
 
 public:
   typedef Batch batch_type;
@@ -34,6 +35,9 @@ public:
   virtual void reset() {}
   virtual void prepare() {}
   virtual void restore(Ptr<TrainingState>) {}
+
+  size_t visualFeatureOffset() const { return visualFeatureOffset_; }
+  void setVisualFeatureOffset(size_t o) { visualFeatureOffset_ = o; }
 };
 
 typedef std::vector<float> Data;
