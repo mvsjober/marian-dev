@@ -96,7 +96,8 @@ const std::set<std::string> PATHS = {"model",
                                      "valid-script-path",
                                      "valid-log",
                                      "valid-translation-output",
-                                     "log"};
+                                     "log",
+                                     "visual-feature"};
 
 void ProcessPaths(YAML::Node& node,
                   const boost::filesystem::path& configPath,
@@ -363,6 +364,8 @@ void ConfigParser::addOptionsModel(po::options_description& desc) {
      "Operation after transformer embedding layer: d = dropout, a = add, n = normalize")
     ("transformer-postprocess", po::value<std::string>()->default_value("dan"),
      "Operation after each transformer layer: d = dropout, a = add, n = normalize")
+    ("visual-feature", po::value<std::string>(),
+     "Path to visual features file in PicSOM format")
 #ifdef CUDNN
     ("char-stride", po::value<int>()->default_value(5),
      "Width of max-pooling layer after convolution layer in char-s2s model")
@@ -851,6 +854,8 @@ void ConfigParser::parseOptions(int argc, char** argv, bool doValidate) {
   SET_OPTION("transformer-dim-ffn", int);
   SET_OPTION("transformer-ffn-depth", int);
   SET_OPTION("transformer-ffn-activation", std::string);
+
+  SET_OPTION_NONDEFAULT("visual-feature", std::string);
 
 #ifdef CUDNN
   SET_OPTION("char-stride", int);
