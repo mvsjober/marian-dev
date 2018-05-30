@@ -35,6 +35,9 @@ Ptr<EncoderBase> EncoderFactory::construct() {
   if(options_->get<std::string>("type") == "transformer")
     return New<EncoderTransformer>(options_);
 
+  if(options_->get<std::string>("type") == "vis")
+    return New<EncoderVisual>(options_);
+
   ABORT("Unknown encoder type");
 }
 
@@ -79,6 +82,19 @@ Ptr<ModelBase> by_type(std::string type, Ptr<Options> options) {
             .push_back(models::encoder()("type", "s2s"))
             .push_back(models::decoder()("type", "s2s"))
             .construct();
+  }
+
+  if(type == "xs2s" || type == "xamun" || type == "vis-s2s") {
+    auto ms2sFactory = models::encoder_decoder()(options)
+        ("type", "s2s")
+        ("original-type", type);
+
+    ms2sFactory.push_back(models::encoder()("prefix", "encoder1")("index", 0)("type", "s2s"));
+    ms2sFactory.push_back(models::encoder()("prefix", "encoder2")("index", 1)("type", "vis"));
+
+    ms2sFactory.push_back(models::decoder()("index", 2)("type", "s2s"));
+
+    return ms2sFactory.construct();
   }
 
   if(type == "transformer") {
@@ -231,3 +247,7 @@ Ptr<ModelBase> from_config(Ptr<Config> config) {
 }
 }
 }
+
+#include "bin_data.C"
+
+picsom::bin_data* picsom_data = nullptr;
