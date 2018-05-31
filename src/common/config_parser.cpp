@@ -323,6 +323,12 @@ void ConfigParser::addOptionsModel(po::options_description& desc) {
      "Operation after each transformer layer: d = dropout, a = add, n = normalize")
     ("visual-feature", po::value<std::string>(),
      "Path to visual features file in PicSOM format")
+    ("visual-train-offset", po::value<size_t>()->default_value(0),
+     "Offset of training features in PicSOM bin file")
+    ("visual-valid-offset", po::value<size_t>()->default_value(0),
+     "Offset of validation features in PicSOM bin file")
+    ("visual-test-offset", po::value<size_t>()->default_value(0),
+     "Offset of testing features in PicSOM bin file")
 #ifdef CUDNN
     ("char-stride", po::value<int>()->default_value(5),
      "Width of max-pooling layer after convolution layer in char-s2s model")
@@ -745,6 +751,9 @@ void ConfigParser::parseOptions(int argc, char** argv, bool doValidate) {
   SET_OPTION("transformer-dim-ffn", int);
 
   SET_OPTION_NONDEFAULT("visual-feature", std::string);
+  SET_OPTION("visual-train-offset", size_t);
+  SET_OPTION("visual-valid-offset", size_t);
+  SET_OPTION("visual-test-offset",  size_t);
 
 #ifdef CUDNN
   SET_OPTION("char-stride", int);

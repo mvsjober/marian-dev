@@ -21,6 +21,8 @@ public:
     using namespace data;
 
     auto dataset = New<Corpus>(options_);
+
+    dataset->setVisualFeatureOffset(options_->get<size_t>("visual-train-offset"));
     dataset->prepare();
 
     Ptr<BatchStats> stats;
