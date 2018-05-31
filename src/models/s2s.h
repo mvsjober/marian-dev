@@ -381,9 +381,9 @@ public:
   EncoderVisual(Ptr<Options> options) : EncoderBase(options) {
     if (picsom_data == nullptr) {
       const string fname = options_->get<std::string>("visual-feature");
-      cout << "Loading PicSOM data from [" << fname << "]" << endl;
+      LOG(info, "Loading PicSOM data from [{}]", fname);
       picsom_data = new picsom::bin_data(fname);
-      cout << picsom_data->str() << endl;
+      LOG(debug, "PicSOM bin info: {}", picsom_data->str());
     }
     vdim_ = (int)picsom_data->vdim();
   }
@@ -393,7 +393,7 @@ public:
     assert(vdim_ > 0);
     size_t offset = batch->visualFeatureOffset();
     if (offset > 0)
-      cout << "OFFSET " << offset << endl;
+      LOG(debug, "PicSOM feature OFFSET={}", offset);
     
     auto subBatch = (*batch)[batchIndex_];
     int dimBatch = subBatch->batchSize();
