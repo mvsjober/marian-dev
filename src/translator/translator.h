@@ -73,6 +73,7 @@ public:
   }
 
   void run() {
+    corpus_->setVisualFeatureOffset(options_->get<size_t>("visual-test-offset"));
     data::BatchGenerator<data::Corpus> bg(corpus_, options_);
 
     auto devices = options_->getDevices();
@@ -166,6 +167,7 @@ public:
 
   std::vector<std::string> run(const std::vector<std::string>& inputs) {
     auto corpus_ = New<data::TextInput>(inputs, srcVocabs_, options_);
+    corpus_->setVisualFeatureOffset(options_->get<size_t>("visual-test-offset"));
     data::BatchGenerator<data::TextInput> bg(corpus_, options_);
 
     auto collector = New<StringCollector>();

@@ -78,7 +78,7 @@ public:
     // Create corpus
     auto validPaths = options_->get<std::vector<std::string>>("valid-sets");
     auto corpus = New<DataSet>(validPaths, vocabs_, opts);
-    corpus->setVisualFeatureOffset(29000);
+    corpus->setVisualFeatureOffset(options_->get<size_t>("visual-valid-offset"));
 
     // Generate batches
     auto batchGenerator = New<BatchGenerator<DataSet>>(corpus, opts);
@@ -256,7 +256,6 @@ public:
     std::vector<std::string> srcPaths(validPaths.begin(), validPaths.end() - 1);
     std::vector<Ptr<Vocab>> srcVocabs(vocabs_.begin(), vocabs_.end() - 1);
     auto corpus = New<data::Corpus>(srcPaths, srcVocabs, opts);
-    corpus->setVisualFeatureOffset(30014);
 
     // Generate batches
     auto batchGenerator = New<BatchGenerator<data::Corpus>>(corpus, opts);
